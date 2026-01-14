@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 飲控助手</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --water: #2196F3;
+            --bg: #f8f9fa;
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 450px; background: white; border-radius: 30px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        
+        /* 飲水進度條 */
+        .water-section { background: #e3f2fd; padding: 15px; border-radius: 20px; margin-bottom: 20px; }
+        .progress-bar { width: 100%; height: 12px; background: #bbdefb; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: var(--water); width: 0%; transition: 0.5s; }
+
+        /* AI 拍照區 */
+        .camera-section { background: #f0f0f0; border: 2px dashed #ccc; border-radius: 20px; padding: 30px; text-align: center; margin-bottom: 20px; cursor: pointer; position: relative; }
+        #preview { width: 100%; border-radius: 15px; display: none; margin-bottom: 10px; }
+        
+        /* 歷史清單 */
+        .history-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .btn { border: none; padding: 12px; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
+        .btn-camera { background: var(--primary); color: white; margin-top: 10px; }
+        .btn-water { background: var(--water); color: white; margin-top: 10px; }
+        
+        .loading { display: none; color: var(--primary); font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h2 style="text-align: center;">🥗 AI 輕盈食光</h2>
+
+    <div class="water-section">
+        <div style="display: flex; justify-content: space-between;">
+            <span>💧 今日飲水量</span>
+            <span id="water-text">0 / 2.0 L</span>
+        </div>
+        <div class="progress-bar"><div id="water-fill" class="progress-fill"></div></div>
+        <button class="btn btn-water" onclick="addWater(0.3)">＋ 飲水 300ml</button>
+    </div>
+
+    <div class="camera-section" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" onchange="handleImage(event)">
+        <img id="preview">
+        <div id="upload-placeholder">
+            <span style="font-size: 40px;">📸</span><br>點擊拍照或上傳午餐
+        </div>
+        <div id="ai-loading" class="loading">AI 正在計算熱量...</div>
+    </div>
+
+    <div id="ai-result" style="display:none; background: #fffde7; padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #fff9c4;">
+        <div id="ai-info"></div>
+        <button class="btn btn-camera" style="margin-top:10px" onclick="confirmEntry()">確認打卡</button>
+    </div>
+
+    <div style="padding: 10px;">
+        <h3 style="margin-bottom: 10px;">今日紀錄</h3>
+        <div id="daily-list"></div>
+    </div>
+</div>
+
+<script>
+    let todayData = { kcal: 0, water: 0, logs: [] };
+
+    // 1. 處理照片並模擬 AI 偵測
+    function handleImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // 顯示預覽圖
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('upload-placeholder').style.display = 'none';
+            simulateAI();
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function simulateAI() {
+        document.getElementById('ai-loading').style.display = 'block';
+        document.getElementById('ai-result').style.display = 'none';
+
+        // 模擬 1.5 秒的 AI 分析時間
+        setTimeout(() => {
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('ai-result').style.display = 'block';
+            
+            // 隨機模擬 AI 辨識結果 (實際開發時會在此處串接 API)
+            const mockKcal = Math.floor(Math.random() * (600 - 300 + 1)) + 300;
+            const items = ["雞肉沙拉", "糙米飯", "水煮蛋"];
+            
+            window.lastDetectedKcal = mockKcal;
+            document.getElementById('ai-info').innerHTML = `
+                <b>AI 偵測結果：</b><br>
+                🥗 內容物預估：${items.join('、')}<br>
+                🔥 預估熱量：<span style="font-size:20px; color:red;">${mockKcal}</span> kcal
+            `;
+        }, 1500);
+    }
+
+    // 2. 確認打卡
+    function confirmEntry() {
+        const kcal = window.lastDetectedKcal;
+        todayData.kcal += kcal;
+        todayData.logs.push({ time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), kcal: kcal });
+        
+        document.getElementById('ai-result').style.display = 'none';
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('upload-placeholder').style.display = 'block';
+        updateUI();
+    }
+
+    // 3. 飲水邏輯
+    function addWater(amount) {
+        todayData.water += amount;
+        updateUI();
+    }
+
+    // 4. 更新介面
+    function updateUI() {
+        // 更新水條
+        const waterPercent = Math.min((todayData.water / 2.0) * 100, 100);
+        document.getElementById('water-fill').style.width = waterPercent + '%';
+        document.getElementById('water-text').innerText = `${todayData.water.toFixed(1)} / 2.0 L`;
+
+        // 更新清單
+        const listHtml = todayData.logs.map(log => `
+            <div class="history-item">
+                <span>🕒 ${log.time}</span>
+                <span>${log.kcal} kcal</span>
+            </div>
+        `).join('');
+        document.getElementById('daily-list').innerHTML = listHtml;
+    }
+
+</script>
+</body>
+</html>
